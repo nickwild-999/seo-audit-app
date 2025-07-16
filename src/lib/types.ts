@@ -117,6 +117,8 @@ export interface ContentAnalysis {
     types: string[];
     errors: string[];
   };
+  placeholderLinks?: any[];
+  hasSuspiciousTestimonials?: boolean;
 }
 
 export interface PerformanceAnalysis {
@@ -185,6 +187,7 @@ export interface AuditResult {
   screenshots: Screenshots;
   recommendations: Recommendation[];
   issues: Issue[];
+  llmAnalysis?: LLMAnalysisResult;
 }
 
 export interface AuditFilters {
@@ -216,4 +219,53 @@ export interface APIResponse<T> {
   data?: T;
   error?: string;
   processingTime?: number;
+}
+
+export interface LLMAnalysisResult {
+  criticalIssues: DetailedIssue[];
+  highPriorityIssues: DetailedIssue[];
+  mediumPriorityIssues: DetailedIssue[];
+  contentQualityAssessment: ContentQualityAssessment;
+  businessImpactProjections: BusinessImpactProjections;
+  actionItems: ActionItem[];
+}
+
+export interface DetailedIssue {
+  id: string;
+  title: string;
+  description: string;
+  impact: string;
+  fix: string;
+  businessImpact: string;
+  codeExample?: string;
+  priority: 'critical' | 'high' | 'medium' | 'low';
+  category: 'seo' | 'technical' | 'content' | 'performance' | 'navigation' | 'accessibility';
+  estimatedFixTime?: string;
+}
+
+export interface ContentQualityAssessment {
+  overallScore: number;
+  issues: string[];
+  recommendations: string[];
+  credibilityScore?: number;
+  professionalismScore?: number;
+  readabilityScore?: number;
+}
+
+export interface BusinessImpactProjections {
+  searchVisibilityIncrease: string;
+  userExperienceImprovement: string;
+  conversionRateImpact: string;
+  expectedTrafficIncrease?: string;
+  revenueImpact?: string;
+  timeToSeeResults?: string;
+}
+
+export interface ActionItem {
+  priority: 'immediate' | 'high' | 'medium' | 'low';
+  task: string;
+  timeline: string;
+  codeExample?: string;
+  successMetrics?: string[];
+  dependencies?: string[];
 }

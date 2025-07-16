@@ -1,5 +1,6 @@
 import { chromium, type Browser, type Page } from 'playwright';
 import type { AuditResult, AuditOptions, SEOAnalysis, TechnicalAnalysis, ContentAnalysis, PerformanceAnalysis, Screenshots, Issue, Recommendation } from './types';
+import { createLLMService } from './llm-service';
 
 let browserInstance: Browser | null = null;
 
@@ -63,6 +64,29 @@ export async function runPlaywrightAudit(url: string, options?: AuditOptions): P
     const contentAnalysis = await analyzeContent(page);
     const performanceAnalysis = await analyzePerformance(page);
     
+    // Extract page content for LLM analysis
+    const pageContent = await page.evaluate(() => {
+      return {
+        title: document.title,
+        html: document.documentElement.outerHTML,
+        textContent: document.body.textContent || '',
+        links: Array.from(document.querySelectorAll('a')).map(a => ({
+          href: a.href,
+          text: a.textContent?.trim() || '',
+          title: a.title || ''
+        })),
+        images: Array.from(document.querySelectorAll('img')).map(img => ({
+          src: img.src,
+          alt: img.alt || '',
+          title: img.title || ''
+        })),
+        headings: Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6')).map(h => ({
+          tag: h.tagName,
+          text: h.textContent?.trim() || ''
+        }))
+      };
+    });
+    
     let screenshots: Screenshots = {
       desktop: null,
       mobile: null,
@@ -83,9 +107,8 @@ export async function runPlaywrightAudit(url: string, options?: AuditOptions): P
     const categories = calculateCategoryScores(issues);
     const overallScore = calculateOverallScore(categories);
     
-    const processingTime = Date.now() - startTime;
-    
-    return {
+    // Create base audit result
+    const baseAuditResult = {
       url,
       timestamp: new Date().toISOString(),
       overallScore,
@@ -97,7 +120,31 @@ export async function runPlaywrightAudit(url: string, options?: AuditOptions): P
       screenshots,
       recommendations,
       issues,
-      processingTime
+      processingTime: Date.now() - startTime
+    };
+    
+    // Run LLM analysis if available
+    let llmAnalysis;
+    try {
+      const llmService = createLLMService();
+      llmAnalysis = await llmService.analyzeAuditResults(
+        baseAuditResult,
+        JSON.stringify(pageContent),
+        {
+          includeContentAnalysis: true,
+          includeBusinessImpact: true,
+          includeCodeExamples: true,
+          includePriorityScoring: true
+        }
+      );
+    } catch (error) {
+      console.warn('LLM analysis failed:', error);
+      llmAnalysis = undefined;
+    }
+    
+    return {
+      ...baseAuditResult,
+      llmAnalysis
     };
     
   } finally {
@@ -236,6 +283,27 @@ async function analyzeContent(page: Page): Promise<ContentAnalysis> {
   const nofollowLinks = links.filter(link => link.rel?.includes('nofollow'));
   const emptyLinks = links.filter(link => !link.text || link.text.trim() === '');
   
+  // Detect broken/placeholder links
+  const placeholderLinks = links.filter(link => 
+    link.href === '#' || 
+    link.href === '#_' || 
+    link.href?.includes('placeholder') ||
+    link.href?.includes('example.com')
+  );
+  
+  // Detect suspicious testimonial content
+  const testimonialAnalysis = await page.evaluate(() => {
+    const testimonials = Array.from(document.querySelectorAll('[class*="testimonial"], [class*="review"], [class*="quote"]'));
+    const suspiciousNames = [
+      'Donald Trump', 'Albert Einstein', 'Dalai Lama', 'Test User', 'John Doe', 'Jane Smith'
+    ];
+    
+    return testimonials.some(testimonial => {
+      const text = testimonial.textContent?.toLowerCase() || '';
+      return suspiciousNames.some(name => text.includes(name.toLowerCase()));
+    });
+  }).catch(() => false);
+  
   return {
     wordCount,
     readabilityScore: 75,
@@ -250,7 +318,7 @@ async function analyzeContent(page: Page): Promise<ContentAnalysis> {
       total: links.length,
       internal: internalLinks.length,
       external: externalLinks.length,
-      broken: 0,
+      broken: placeholderLinks.length,
       nofollow: nofollowLinks.length,
       empty: emptyLinks.length
     },
@@ -258,7 +326,9 @@ async function analyzeContent(page: Page): Promise<ContentAnalysis> {
       hasStructuredData: false,
       types: [],
       errors: []
-    }
+    },
+    placeholderLinks,
+    hasSuspiciousTestimonials: testimonialAnalysis
   };
 }
 
@@ -399,6 +469,30 @@ function analyzeIssuesAndRecommendations(
       description: `${content.images.withoutAlt} images are missing alt text.`,
       impact: 'medium',
       recommendation: 'Add descriptive alt text to all images for accessibility and SEO.'
+    });
+  }
+  
+  if (content.placeholderLinks && content.placeholderLinks.length > 0) {
+    issues.push({
+      id: 'placeholder-links',
+      type: 'error',
+      category: 'content',
+      title: 'Broken/Placeholder Links Detected',
+      description: `${content.placeholderLinks.length} links point to placeholders (#, #_, example.com)`,
+      impact: 'high',
+      recommendation: 'Replace placeholder links with actual URLs or remove them.'
+    });
+  }
+  
+  if (content.hasSuspiciousTestimonials) {
+    issues.push({
+      id: 'fake-testimonials',
+      type: 'warning',
+      category: 'content',
+      title: 'Suspicious Testimonials Detected',
+      description: 'Testimonials contain names of famous people or obvious test data',
+      impact: 'medium',
+      recommendation: 'Replace with real client testimonials or remove the section.'
     });
   }
   
