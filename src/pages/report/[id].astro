@@ -1,0 +1,22 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import ReportViewer from '../../components/ReportViewer.astro';
+import { createAuditService } from '../../lib/audit-service';
+
+const { id } = Astro.params;
+
+if (!id) {
+  return Astro.redirect('/404');
+}
+
+const auditService = createAuditService();
+const auditResult = await auditService.getAuditResult(id);
+
+if (!auditResult) {
+  return Astro.redirect('/404');
+}
+---
+
+<Layout title={`SEO Audit Report - ${auditResult.url}`}>
+  <ReportViewer auditResult={auditResult} />
+</Layout>

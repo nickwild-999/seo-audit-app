@@ -1,0 +1,45 @@
+---
+export interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content="Professional SEO audit tool powered by Playwright" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+  </head>
+  <body class="bg-gray-50 min-h-screen">
+    <header class="bg-white shadow-sm border-b">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center py-6">
+          <div class="flex items-center">
+            <h1 class="text-2xl font-bold text-gray-900">SEO Audit Tool</h1>
+          </div>
+          <nav class="flex space-x-8">
+            <a href="/" class="text-gray-600 hover:text-gray-900">New Audit</a>
+            <a href="/history" class="text-gray-600 hover:text-gray-900">History</a>
+          </nav>
+        </div>
+      </div>
+    </header>
+    
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <slot />
+    </main>
+    
+    <footer class="bg-white border-t mt-20">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <p class="text-center text-gray-600">
+          SEO Audit Tool - Powered by Playwright
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>

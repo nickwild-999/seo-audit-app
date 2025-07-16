@@ -1,0 +1,235 @@
+---
+import type { AuditResult } from '../lib/types';
+
+interface Props {
+  auditResult: AuditResult;
+}
+
+const { auditResult } = Astro.props;
+
+function getScoreColor(score: number): string {
+  if (score >= 80) return 'text-green-600';
+  if (score >= 60) return 'text-yellow-600';
+  return 'text-red-600';
+}
+
+function getScoreBackground(score: number): string {
+  if (score >= 80) return 'bg-green-100';
+  if (score >= 60) return 'bg-yellow-100';
+  return 'bg-red-100';
+}
+
+function formatDate(dateString: string): string {
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+---
+
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="bg-white rounded-lg shadow-md p-6">
+    <div class="flex justify-between items-start">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900 mb-2">SEO Audit Report</h1>
+        <p class="text-lg text-gray-600 mb-2">{auditResult.url}</p>
+        <p class="text-sm text-gray-500">
+          Analyzed on {formatDate(auditResult.timestamp)}
+        </p>
+      </div>
+      <div class={`text-center p-4 rounded-lg ${getScoreBackground(auditResult.overallScore)}`}>
+        <div class={`text-3xl font-bold ${getScoreColor(auditResult.overallScore)}`}>
+          {auditResult.overallScore}
+        </div>
+        <div class="text-sm text-gray-600 mt-1">Overall Score</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category Scores -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    {Object.entries(auditResult.categories).map(([category, data]) => (
+      <div class="bg-white rounded-lg shadow-md p-4">
+        <div class="flex justify-between items-center mb-2">
+          <h3 class="font-semibold text-gray-900 capitalize">{category}</h3>
+          <span class={`text-xl font-bold ${getScoreColor(data.score)}`}>
+            {data.score}
+          </span>
+        </div>
+        <div class="text-sm text-gray-600">
+          {data.issues.length} issues found
+        </div>
+      </div>
+    ))}
+  </div>
+
+  <!-- Critical Issues -->
+  {auditResult.issues.filter(issue => issue.impact === 'high').length > 0 && (
+    <div class="bg-white rounded-lg shadow-md p-6">
+      <h2 class="text-xl font-bold text-gray-900 mb-4">Critical Issues</h2>
+      <div class="space-y-3">
+        {auditResult.issues.filter(issue => issue.impact === 'high').map(issue => (
+          <div class="border-l-4 border-red-500 pl-4">
+            <h3 class="font-semibold text-red-700">{issue.title}</h3>
+            <p class="text-gray-600 text-sm mt-1">{issue.description}</p>
+            <p class="text-blue-600 text-sm mt-1">{issue.recommendation}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
+
+  <!-- SEO Analysis -->
+  <div class="bg-white rounded-lg shadow-md p-6">
+    <h2 class="text-xl font-bold text-gray-900 mb-4">SEO Analysis</h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <h3 class="font-semibold text-gray-900 mb-2">Title Tag</h3>
+        <p class="text-gray-600">{auditResult.seo.title.content || 'No title found'}</p>
+        <p class="text-sm text-gray-500 mt-1">
+          Length: {auditResult.seo.title.length} characters
+          {auditResult.seo.title.isOptimal ? 
+            <span class="text-green-600 ml-2">✓ Optimal</span> : 
+            <span class="text-red-600 ml-2">⚠ Needs improvement</span>
+          }
+        </p>
+      </div>
+      
+      <div>
+        <h3 class="font-semibold text-gray-900 mb-2">Meta Description</h3>
+        <p class="text-gray-600">{auditResult.seo.metaDescription.content || 'No meta description found'}</p>
+        <p class="text-sm text-gray-500 mt-1">
+          Length: {auditResult.seo.metaDescription.length} characters
+          {auditResult.seo.metaDescription.isOptimal ? 
+            <span class="text-green-600 ml-2">✓ Optimal</span> : 
+            <span class="text-red-600 ml-2">⚠ Needs improvement</span>
+          }
+        </p>
+      </div>
+    </div>
+    
+    <div class="mt-6">
+      <h3 class="font-semibold text-gray-900 mb-2">Heading Structure</h3>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+        {Object.entries(auditResult.seo.headingStructure).map(([level, headings]) => (
+          <div>
+            <h4 class="font-medium text-gray-700 uppercase">{level}</h4>
+            <p class="text-sm text-gray-600">{headings.length} found</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  <!-- Content Analysis -->
+  <div class="bg-white rounded-lg shadow-md p-6">
+    <h2 class="text-xl font-bold text-gray-900 mb-4">Content Analysis</h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div>
+        <h3 class="font-semibold text-gray-900 mb-2">Content Stats</h3>
+        <p class="text-gray-600">Word Count: {auditResult.content.wordCount}</p>
+        <p class="text-gray-600">Readability Score: {auditResult.content.readabilityScore}</p>
+      </div>
+      
+      <div>
+        <h3 class="font-semibold text-gray-900 mb-2">Images</h3>
+        <p class="text-gray-600">Total: {auditResult.content.images.total}</p>
+        <p class="text-gray-600">Without Alt: {auditResult.content.images.withoutAlt}</p>
+        <p class="text-gray-600">Lazy Loaded: {auditResult.content.images.lazyLoaded}</p>
+      </div>
+      
+      <div>
+        <h3 class="font-semibold text-gray-900 mb-2">Links</h3>
+        <p class="text-gray-600">Total: {auditResult.content.links.total}</p>
+        <p class="text-gray-600">Internal: {auditResult.content.links.internal}</p>
+        <p class="text-gray-600">External: {auditResult.content.links.external}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Screenshots -->
+  {auditResult.screenshots.desktop && (
+    <div class="bg-white rounded-lg shadow-md p-6">
+      <h2 class="text-xl font-bold text-gray-900 mb-4">Screenshots</h2>
+      
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {auditResult.screenshots.desktop && (
+          <div>
+            <h3 class="font-semibold text-gray-900 mb-2">Desktop View</h3>
+            <img 
+              src={auditResult.screenshots.desktop} 
+              alt="Desktop screenshot"
+              class="w-full border rounded-lg shadow-sm"
+            />
+          </div>
+        )}
+        
+        {auditResult.screenshots.mobile && (
+          <div>
+            <h3 class="font-semibold text-gray-900 mb-2">Mobile View</h3>
+            <img 
+              src={auditResult.screenshots.mobile} 
+              alt="Mobile screenshot"
+              class="w-full max-w-sm border rounded-lg shadow-sm mx-auto"
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  )}
+
+  <!-- Recommendations -->
+  {auditResult.recommendations.length > 0 && (
+    <div class="bg-white rounded-lg shadow-md p-6">
+      <h2 class="text-xl font-bold text-gray-900 mb-4">Recommendations</h2>
+      
+      <div class="space-y-4">
+        {auditResult.recommendations.map(rec => (
+          <div class="border-l-4 border-blue-500 pl-4">
+            <div class="flex justify-between items-start">
+              <h3 class="font-semibold text-gray-900">{rec.title}</h3>
+              <span class={`px-2 py-1 text-xs rounded ${
+                rec.priority === 'high' ? 'bg-red-100 text-red-700' :
+                rec.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                'bg-green-100 text-green-700'
+              }`}>
+                {rec.priority} priority
+              </span>
+            </div>
+            <p class="text-gray-600 text-sm mt-1">{rec.description}</p>
+            <ul class="mt-2 text-sm text-gray-600">
+              {rec.actionItems.map(item => (
+                <li class="flex items-start">
+                  <span class="text-blue-500 mr-2">•</span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
+
+  <!-- Actions -->
+  <div class="flex justify-center space-x-4">
+    <a 
+      href="/"
+      class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+    >
+      Run New Audit
+    </a>
+    <button
+      onclick="window.print()"
+      class="bg-gray-600 text-white px-6 py-2 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+    >
+      Print Report
+    </button>
+  </div>
+</div>
