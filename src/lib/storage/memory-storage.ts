@@ -12,6 +12,11 @@ export class InMemoryAuditStorage implements AuditStorage {
       status: 'completed' as const
     };
     
+    console.log('Saving audit with LLM analysis:', audit.llmAnalysis ? 'Yes' : 'No');
+    if (audit.llmAnalysis) {
+      console.log('Critical issues count:', audit.llmAnalysis.criticalIssues?.length || 0);
+    }
+    
     this.audits.set(id, auditWithMetadata);
     return id;
   }

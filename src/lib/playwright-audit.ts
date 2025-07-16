@@ -123,7 +123,7 @@ export async function runPlaywrightAudit(url: string, options?: AuditOptions): P
       processingTime: Date.now() - startTime
     };
     
-    // Run LLM analysis if available
+    // Run LLM analysis (fallback analysis will be used if LLM is not available)
     let llmAnalysis;
     try {
       const llmService = createLLMService();
@@ -137,8 +137,9 @@ export async function runPlaywrightAudit(url: string, options?: AuditOptions): P
           includePriorityScoring: true
         }
       );
+      console.log('LLM analysis completed successfully');
     } catch (error) {
-      console.warn('LLM analysis failed:', error);
+      console.warn('LLM analysis failed, using fallback:', error);
       llmAnalysis = undefined;
     }
     
